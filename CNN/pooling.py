@@ -9,6 +9,7 @@ from utils import *
 class poolingConnection:
 	'''
 	下采样方法：这里采样的是MaxPooling 方法
+    为了反馈计算方便，还保留了最大值的值得为之信息
 	'''
 	def __init__(self, prevLayer, currLayer, poolingStepX, poolingStepY):
 		self.prevLayer   = prevLayer
@@ -35,19 +36,20 @@ class poolingConnection:
 		self.maximaLocationsY = np.zeros([self.currLayer.get_n(), self.currLayer.shape()[0], self.currLayer.shape()[1]])
 		#存储下采样后的特征图。
 		pooledFM = np.zeros([self.currLayer.get_n(), self.currLayer.shape()[0], self.currLayer.shape()[1]])
-		#yi:prev的网络权值
-		yi = self.prevLayer.get_FM()
+		#xi:prev的网络权值
+		xi = self.prevLayer.get_FM()
 
 		for n in range(self.prevLayer.get_n()):
 			for i in range(currSizeY):
 				for j in range(currSizeX):
 					#提取需要下采样的区域
-					reg = yi[n, i*self.poolingStepY:(i+1)*self.poolingStepY, j*self.poolingStepX:(j+1)*self.poolingStepX]
+					reg = xi[n, i*self.poolingStepY:(i+1)*self.poolingStepY, j*self.poolingStepX:(j+1)*self.poolingStepX]
 					#获取下采样区域中的最大值的位置，是指代在特征图中的位置
 					loc = np.unravel_index(reg.argmax(), reg.shape) + np.array([i*self.poolingStepY, j*self.poolingStepY])
 					self.maximaLocationsY[n, i, j] = loc[0]
 					self.maximaLocationsX[n, i, j] = loc[1]
-					pooledFM[n, i, j] = yi[n, loc[0], loc[1]]
+                 #获取位置的值
+					pooledFM[n, i, j] = xi[n, loc[0], loc[1]]
 	
 		self.currLayer.set_FM(pooledFM)
 
@@ -66,6 +68,7 @@ class poolingConnection:
 			for i in range(currSizeY):
 				for j in range(currSizeX):
 					#因为是MaxPooling 下采样，所以只有在最大值处才有反馈到，其它位置的梯度为0
+                 # 其它位置额值，本来就是 0 ，所以不用去设置
 					prevErr[n, self.maximaLocationsY[n, i, j], self.maximaLocationsX[n, i, j]] = currErr[n, i, j]
 
 

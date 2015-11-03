@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# mlp.py - implements a MultiLayer perceptron
+# mlp.py - MLP的实现
 
 
 import numpy as np
@@ -98,22 +98,22 @@ class fullConnection:
 		x = self.prevLayer.get_x()[np.newaxis]
 		if self.currLayer.hasBias:
 			x = np.append(x, [1])
-
+      # 矩阵乘法
 		z = np.dot(self.w.T, x)
 		
-		# compute and store output
+		# 计算激活函数值
 		y = self.act.func(z)
 		self.currLayer.set_x(y)
 
 		return y
 	
-	def bprop(self, ni, target = None, verbose = False):
+	def bprop(self, lr, target = None, verbose = False):
 		yj = self.currLayer.get_x()
 		if verbose: 
 			print "out = ", yj
 			print "w = ", self.w
 
-		# compute or retreive error of current layer
+		# 获取当前层的残差
 		if self.currLayer.isOutput:
 			if target is None: raise Exception("bprop(): target values needed for output layer")
 			currErr = -(target - yj) * self.act.deriv(yj)
@@ -124,7 +124,7 @@ class fullConnection:
 		if verbose: print "currErr =  ", currErr
 
 		yi = np.append(self.prevLayer.get_x(), [1])
-		# compute error of previous layer
+		#  计算前面一层的残差
 		if not self.prevLayer.isInput:
 			prevErr = np.zeros(len(yi))
 			for i in range(len(yi)):
@@ -132,9 +132,9 @@ class fullConnection:
 
 			self.prevLayer.set_error(np.delete(prevErr,-1))
 
-		# compute weight updates
+		#  计算权重更新 ： * 当前层的输出
 		dw = np.dot(np.array(yi)[np.newaxis].T, np.array(currErr)[np.newaxis])
-		self.w -= ni * dw
+		self.w -= lr * dw
 	
 	def get_weights(self):
 		return self.w

@@ -91,30 +91,32 @@ class convolutionalConnection:
 		'''
 		反馈操作：
 		'''
+       #每一层的输出
 		yi = self.prevLayer.get_FM() # 前层
-		yj = self.currLayer.get_FM() # 后层
+		yj = self.currLayer.get_FM() # 后层 = 当前层
 
-		# 获取当前层的损失函数值
+		# 获取‘当前层’的误差灵敏度
 		if not self.currLayer.isOutput:
 			currErr = self.currLayer.get_FM_error()
 		else:
 			currErr = -(target - yj) * self.act.deriv(yj)
 			self.currLayer.set_FM_error(currErr)
 
-		# 计算前层的损失函数值
+		# 计算’前层‘的误差灵敏度，也就是说最终的损失函数对该层输出的导数：d L /d Xi
+       # 与MLP 计算残差一样， 
 		prevErr = np.zeros([self.prevLayer.get_n(), self.prevLayer.shape()[0], self.prevLayer.shape()[1]])
 		biasErr = np.zeros([self.currLayer.get_n()])
 
 		k = 0 
-		for j in range(self.currLayer.get_n()): # 遍历每一个后层特征图
-			for i in range(self.prevLayer.get_n()): # 遍历每一个前层特征图
+		for j in range(self.currLayer.get_n()): # 遍历每一个‘后层’特征图
+			for i in range(self.prevLayer.get_n()): # 遍历每一个‘前层’特征图
 				if self.connections[i, j] == 1:
 
 					#  遍历后层的一个特征图
 					for y_out in range(self.currLayer.shape()[0]):
 						for x_out in range(self.currLayer.shape()[1]):
 
-							# 遍历每一个卷积核的感受域
+							# 遍历每一个卷积核的感受域，就是用乘法来计算卷积，
 							for y_k in range(0, self.kernelHeight, self.stepY):
 								for x_k in range(0, self.kernelWidth, self.stepX):
 									prevErr[i, y_out + y_k, x_out + x_k] += self.k[k, y_k, x_k] * currErr[j, y_out, x_out]
@@ -123,7 +125,8 @@ class convolutionalConnection:
 							biasErr[j] += currErr[j, y_out, x_out] * self.k[k, y_k, x_k]
 				# 下一个卷积核
 				k += 1
-		# 乘以 激活函数的导数，才是真正的梯度
+    
+		# 乘以 激活函数的导数，才是真正的梯度 d L /d Xi
 		for i in range(self.prevLayer.get_n()):
 			prevErr[i] = prevErr[i] * self.act.deriv(yi[i])
 
@@ -133,7 +136,7 @@ class convolutionalConnection:
 
 		self.prevLayer.set_FM_error(prevErr)
 
-		# 更新卷积核w
+		# 计算梯度W d L /d Wi
 		dw = np.zeros(self.k.shape)
 		dwBias = np.zeros(self.currLayer.get_n())
 		k = 0 
@@ -159,6 +162,6 @@ class convolutionalConnection:
 
 
 		#  更新卷积核
-		self.k -= ni * d
+		self.k -= ni * dw
 		self.biasWeights -= ni * dwBias
 
